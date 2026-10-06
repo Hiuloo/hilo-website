@@ -113,16 +113,63 @@
   updateScroll();
 
   const finePointer = window.matchMedia('(pointer: fine)');
-  hero.addEventListener('pointermove', e => {
-    if (!finePointer.matches || motion.matches) return;
-    const art = $('.hero-art');
-    art.style.setProperty('--px', ((e.clientX / window.innerWidth - .5) * 16) + 'px');
-    art.style.setProperty('--py', ((e.clientY / window.innerHeight - .5) * 12) + 'px');
+  const heroFrame = $('.hero-frame');
+  const heroArt = $('.hero-art');
+  const spherePointer = { x: 0, y: 0, targetX: 0, targetY: 0, frame: null, lastTime: 0 };
+  const sphereEnabled = () => finePointer.matches && !mobile.matches && !motion.matches;
+  function renderSpherePointer() {
+    const { x, y } = spherePointer;
+    heroArt.style.setProperty('--px', x * 18 + 'px');
+    heroArt.style.setProperty('--py', y * 12 + 'px');
+    heroArt.style.setProperty('--sphere-x', x * 64 + 'px');
+    heroArt.style.setProperty('--sphere-y', y * 44 + 'px');
+    heroArt.style.setProperty('--ring-x', x * 23 + 'px');
+    heroArt.style.setProperty('--ring-y', y * 16 + 'px');
+    heroArt.style.setProperty('--light-x', 32 + x * 17 + '%');
+    heroArt.style.setProperty('--light-y', 24 + y * 12 + '%');
+  }
+  function animateSpherePointer(now) {
+    spherePointer.frame = null;
+    const elapsed = spherePointer.lastTime ? Math.min(now - spherePointer.lastTime, 50) : 16;
+    spherePointer.lastTime = now;
+    // 按时间平滑，60Hz 与高刷新率屏幕具有相同的跟随速度。
+    const blend = 1 - Math.exp(-elapsed / 110);
+    spherePointer.x += (spherePointer.targetX - spherePointer.x) * blend;
+    spherePointer.y += (spherePointer.targetY - spherePointer.y) * blend;
+    if (Math.abs(spherePointer.targetX - spherePointer.x) + Math.abs(spherePointer.targetY - spherePointer.y) < .001) {
+      spherePointer.x = spherePointer.targetX;
+      spherePointer.y = spherePointer.targetY;
+      renderSpherePointer();
+      spherePointer.lastTime = 0;
+      return;
+    }
+    renderSpherePointer();
+    spherePointer.frame = requestAnimationFrame(animateSpherePointer);
+  }
+  function scheduleSpherePointer() {
+    if (spherePointer.frame === null) spherePointer.frame = requestAnimationFrame(animateSpherePointer);
+  }
+  function resetSpherePointer(immediate = false) {
+    spherePointer.targetX = spherePointer.targetY = 0;
+    if (immediate) {
+      if (spherePointer.frame !== null) cancelAnimationFrame(spherePointer.frame);
+      spherePointer.frame = null;
+      spherePointer.lastTime = 0;
+      spherePointer.x = spherePointer.y = 0;
+      renderSpherePointer();
+    } else scheduleSpherePointer();
+  }
+  heroFrame.addEventListener('pointermove', e => {
+    if (!sphereEnabled() || e.pointerType === 'touch') return;
+    const bounds = heroFrame.getBoundingClientRect();
+    spherePointer.targetX = clamp((e.clientX - bounds.left) / bounds.width * 2 - 1, -1, 1);
+    spherePointer.targetY = clamp((e.clientY - bounds.top) / bounds.height * 2 - 1, -1, 1);
+    scheduleSpherePointer();
   }, { passive: true });
-  hero.addEventListener('pointerleave', () => {
-    $('.hero-art').style.setProperty('--px', '0px');
-    $('.hero-art').style.setProperty('--py', '0px');
-  });
+  heroFrame.addEventListener('pointerleave', () => resetSpherePointer());
+  window.addEventListener('blur', () => resetSpherePointer());
+  document.addEventListener('visibilitychange', () => { if (document.hidden) resetSpherePointer(true); });
+  [finePointer, motion, mobile].forEach(query => query.addEventListener('change', () => resetSpherePointer(true)));
   $$('.magnetic').forEach(button => {
     button.addEventListener('pointermove', e => {
       if (!finePointer.matches || motion.matches) return;

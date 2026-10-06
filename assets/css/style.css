@@ -5,12 +5,15 @@
 .js-motion .hero{height:160svh;min-height:1152px;max-height:none}
 .js-motion .hero-frame{position:sticky;top:0;height:100svh;min-height:720px}
 .hero-content{opacity:calc(1 - var(--hero-progress)*.55);transform:translateY(calc(var(--hero-progress)*-65px)) scale(calc(1 + var(--hero-progress)*.12));filter:blur(calc(var(--hero-progress)*2px))}
-.hero-art{scale:calc(1 + var(--scene-progress)*.16);rotate:calc(var(--scene-progress)*8deg);transform-origin:67% 50%}
+.hero-art{scale:calc(1 + var(--scene-progress)*.16);rotate:calc(var(--scene-progress)*8deg);transform-origin:67% 50%;transition:none}
+.orbit-one{transform:translate(var(--ring-x,0px),var(--ring-y,0px)) rotate(-28deg) scaleX(.64)}
+.orbit-two{transform:translate(calc(var(--ring-x,0px)*.7),calc(var(--ring-y,0px)*.7)) rotate(32deg) scaleX(.7)}
+.orbit-three{transform:translate(calc(var(--ring-x,0px)*.4),calc(var(--ring-y,0px)*.4)) rotate(72deg) scaleX(.63)}
 .orbit-one{animation:orbit-sweep 32s linear infinite}
 .orbit:after{content:"";position:absolute;left:50%;top:0;width:6px;height:6px;transform:translate(-50%,-50%);border-radius:50%;background:#d5c1f8;box-shadow:0 0 16px 3px #c8a4ff55}
 .orbit-two:after{width:4px;height:4px;left:16%;top:14%}
 .orbit-three:after{display:none}
-.orbit-core{translate:calc(var(--scene-progress)*28px) calc(var(--scene-progress)*-18px)}
+.orbit-core{translate:calc(var(--scene-progress)*28px + var(--sphere-x,0px)) calc(var(--scene-progress)*-18px + var(--sphere-y,0px));background:radial-gradient(circle at var(--light-x,32%) var(--light-y,24%),#e3d9ff77,#6c4e9466 25%,#23182f 50%,#09090d 74%)}
 .page-progress{position:absolute;bottom:-1px;left:0;width:100%;height:2px;background:linear-gradient(90deg,#72549f,#b5a0d8);transform:scaleX(var(--reading-progress,0));transform-origin:left;pointer-events:none}
 .art-motion{position:absolute;inset:0;--tilt-x:0deg;--tilt-y:0deg;transform:perspective(900px) translateY(calc((.5 - var(--section-progress,.5))*24px)) rotateX(var(--tilt-x)) rotateY(var(--tilt-y));transition:transform .7s var(--ease)}
 .studio-visual{--tilt-x:0deg;--tilt-y:0deg;transform:perspective(1000px) rotateX(var(--tilt-x)) rotateY(var(--tilt-y));transition:transform .7s var(--ease)}

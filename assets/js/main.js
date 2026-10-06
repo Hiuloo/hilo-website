@@ -12,6 +12,20 @@
   const automation = $('#automation');
   const steps = $$('.workflow li');
   const clamp = (n, min = 0, max = 1) => Math.min(max, Math.max(min, n));
+  const capSections = $$('.cap-section');
+  const capLinks = $$('[data-cap-link]');
+  const manifestoWords = $$('.manifesto > span');
+  const pageProgress = document.createElement('div');
+  pageProgress.className = 'page-progress';
+  pageProgress.setAttribute('aria-hidden', 'true');
+  header.append(pageProgress);
+  // 动态能力图独立于 reveal 容器，避免滚动与入场动画互相覆盖。
+  $$('.cap-art').forEach(art => {
+    const stage = document.createElement('div');
+    stage.className = 'art-motion';
+    while (art.firstChild) stage.append(art.firstChild);
+    art.append(stage);
+  });
 
   // 内容默认可见；只有观察器创建成功时，才开启滚动 reveal。
   if ('IntersectionObserver' in window && !motion.matches) {
@@ -56,15 +70,31 @@
   function updateScroll() {
     queued = false;
     header.classList.toggle('scrolled', window.scrollY > 35);
+    const pageLength = document.documentElement.scrollHeight - window.innerHeight;
+    pageProgress.style.setProperty('--reading-progress', clamp(window.scrollY / Math.max(1, pageLength)));
     if (!motion.matches) {
       const h = hero.getBoundingClientRect();
-      heroContent.style.setProperty('--hero-progress', clamp(-h.top / h.height));
-    } else heroContent.style.removeProperty('--hero-progress');
+      const progress = clamp(-h.top / (mobile.matches ? h.height : Math.max(1, h.height - window.innerHeight)));
+      heroContent.style.setProperty('--hero-progress', progress);
+      hero.style.setProperty('--scene-progress', progress);
+    } else {
+      heroContent.style.removeProperty('--hero-progress');
+      hero.style.removeProperty('--scene-progress');
+    }
     const rect = automation.getBoundingClientRect();
     const progress = (mobile.matches || motion.matches) ? 1 : clamp((window.innerHeight * .45 - rect.top) / Math.max(1, rect.height - window.innerHeight * .75));
     steps.forEach((step, i) => step.classList.toggle('active', i / steps.length <= progress));
-    const active = ['ai', 'data', 'creative', 'digital'].filter(id => $('#' + id).getBoundingClientRect().top < window.innerHeight * .5).pop();
-    $$('[data-cap-link]').forEach(link => {
+    let active;
+    capSections.forEach(section => {
+      const bounds = section.getBoundingClientRect();
+      if (bounds.top < window.innerHeight * .5) active = section.id;
+      section.style.setProperty('--section-progress', motion.matches ? .5 : clamp((window.innerHeight - bounds.top) / (window.innerHeight + bounds.height)));
+    });
+    manifestoWords.forEach(word => {
+      const focus = motion.matches ? 1 : clamp((window.innerHeight * .88 - word.getBoundingClientRect().top) / (window.innerHeight * .45));
+      word.style.setProperty('--word-focus', focus);
+    });
+    capLinks.forEach(link => {
       const isActive = link.dataset.capLink === active;
       link.classList.toggle('active', isActive);
       if (isActive) link.setAttribute('aria-current', 'location');
@@ -100,6 +130,32 @@
       button.style.translate = `${(e.clientX - rect.left - rect.width / 2) * .08}px ${(e.clientY - rect.top - rect.height / 2) * .08}px`;
     });
     button.addEventListener('pointerleave', () => { button.style.translate = ''; });
+  });
+
+  // 指针倾斜只作用于视觉层，文字、链接与点击位置保持稳定。
+  $$('.cap-art, .studio-card, .lab-constellation').forEach(surface => {
+    const visual = $('.studio-visual', surface) || $('.art-motion', surface) || surface;
+    let latestPointer, pointerFrame;
+    surface.addEventListener('pointermove', e => {
+      if (!finePointer.matches || mobile.matches || motion.matches) return;
+      latestPointer = { x: e.clientX, y: e.clientY };
+      if (pointerFrame) return;
+      pointerFrame = requestAnimationFrame(() => {
+        pointerFrame = undefined;
+        const bounds = surface.getBoundingClientRect();
+        visual.style.setProperty('--tilt-x', ((latestPointer.y - bounds.top) / bounds.height - .5) * -5 + 'deg');
+        visual.style.setProperty('--tilt-y', ((latestPointer.x - bounds.left) / bounds.width - .5) * 7 + 'deg');
+      });
+    }, { passive: true });
+    const resetTilt = () => {
+      if (pointerFrame) cancelAnimationFrame(pointerFrame);
+      pointerFrame = undefined;
+      visual.style.setProperty('--tilt-x', '0deg');
+      visual.style.setProperty('--tilt-y', '0deg');
+    };
+    surface.addEventListener('pointerleave', resetTilt);
+    motion.addEventListener('change', resetTilt);
+    mobile.addEventListener('change', resetTilt);
   });
 
   $$('[data-interest]').forEach(link => link.addEventListener('click', () => {
